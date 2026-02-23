@@ -9,8 +9,8 @@ pub fn run(key: &str) -> Result<()> {
     let root = config::project_root()?;
     let cfg = config::read(&root)?;
 
-    let password = rpassword::prompt_password("Master password: ")
-        .context("Failed to read master password")?;
+    let password = rpassword::prompt_password("Enveil store password: ")
+        .context("Failed to read Enveil store password")?;
     let password = SecretString::new(password);
 
     let store_path = config::store_path(&root);

@@ -25,33 +25,39 @@ pub fn run() -> Result<()> {
 
     let cfg = config::Config::default_new(salt_hex);
 
-    // Prompt for master password (twice, with confirmation)
+    // Prompt for Enveil store password (twice, with confirmation)
     let password = prompt_new_password()?;
+
+    // Write config first — this creates the .enveil/ directory
+    config::write(&root, &cfg).context("Failed to write config")?;
 
     let store_path = config::store_path(&root);
     PasswordStore::create_empty(&store_path, cfg.kdf_params(), salt, &password)
         .context("Failed to create encrypted store")?;
 
-    config::write(&root, &cfg).context("Failed to write config")?;
-
-    println!("Initialized. Add secrets with: enveil set <key>");
-    println!("Reference them in .env as: KEY=ev://<key>");
-    println!("Run your app with: enveil run -- <command>");
+    println!("Initialized.");
+    println!();
+    println!("  1. Add a secret:       enveil set some_api_key");
+    println!("  2. Reference in .env:  API_KEY=ev://some_api_key");
+    println!("  3. Run your app:       enveil run -- npm start");
+    println!();
+    println!("The ev:// name must match the key you used in 'enveil set'.");
+    println!("The left side (DATABASE_URL) is what your app sees.");
 
     Ok(())
 }
 
 pub fn prompt_new_password() -> Result<SecretString> {
-    let password = rpassword::prompt_password("Enter new master password: ")
+    let password = rpassword::prompt_password("New Enveil store password: ")
         .context("Failed to read password")?;
-    let confirm = rpassword::prompt_password("Confirm master password: ")
+    let confirm = rpassword::prompt_password("Confirm Enveil store password: ")
         .context("Failed to read password confirmation")?;
 
     if password != confirm {
         bail!("Passwords do not match.");
     }
     if password.is_empty() {
-        bail!("Master password must not be empty.");
+        bail!("Enveil store password must not be empty.");
     }
 
     Ok(SecretString::new(password))

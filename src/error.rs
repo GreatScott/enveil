@@ -5,7 +5,7 @@ pub enum EnveilError {
     #[error("Store not initialized. Run `enveil init` first.")]
     StoreNotInitialized,
 
-    #[error("Wrong master password or corrupted store.")]
+    #[error("Wrong Enveil store password, or store is corrupted.")]
     DecryptionFailed,
 
     #[error("Store is corrupted: {0}")]

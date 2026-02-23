@@ -23,8 +23,8 @@ pub fn run(cmd: Vec<String>) -> Result<()> {
     let lines = env_template::parse_file(&env_path).context("Failed to parse .env")?;
 
     // Unlock the local store
-    let password = rpassword::prompt_password("Master password: ")
-        .context("Failed to read master password")?;
+    let password = rpassword::prompt_password("Enveil store password: ")
+        .context("Failed to read Enveil store password")?;
     let password = SecretString::new(password);
 
     let store_path = config::store_path(&root);

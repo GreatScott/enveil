@@ -45,6 +45,6 @@ pub enum Command {
         file: PathBuf,
     },
 
-    /// Re-encrypt the store with a new master password.
+    /// Re-encrypt the store with a new Enveil store password.
     Rotate,
 }
