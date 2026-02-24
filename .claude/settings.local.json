@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /Users/claude/Documents/Personal-Dev-Projects/enveil/src/**/*.rs)"
+    ]
+  }
+}

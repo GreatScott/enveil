@@ -2,6 +2,12 @@
 name = "enveil"
 version = "0.1.0"
 edition = "2021"
+description = "Hide .env secrets from AI agents. Stores secrets in an encrypted local store and injects them into subprocesses at runtime — your .env file contains only symbolic references, never real values."
+license = "MIT"
+repository = "https://github.com/greatscott/enveil"
+readme = "README.md"
+keywords = ["secrets", "env", "security", "cli", "encryption"]
+categories = ["command-line-utilities", "cryptography"]
 
 [[bin]]
 name = "enveil"
