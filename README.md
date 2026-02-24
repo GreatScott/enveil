@@ -281,50 +281,13 @@ enveil run -- env
 # output: Secret 'nonexistent_key' not found in store. Add it with: enveil set nonexistent_key
 # exit code: 1  (the `env` subprocess never ran)
 ```
-
 ---
+## Future paths
 
-### 6. `set` value cannot be passed as a CLI argument
+### 1. Global store
+Implement optional/additional system-wide store for easier maintenance of secrets used across multiple projects.
 
-The `set` subcommand is defined with only a `key` positional argument. There is no `value` parameter. This is enforced by the type system — clap generates the parser from the struct definition, so a value argument is structurally impossible to add accidentally.
+### 2. Integration with system keychains, etc.
+Reduce the need to to manually enter the store's password whenever making updates
 
-**Verify in source:**
 
-```bash
-grep -A4 "Set {" src/cli.rs
-# output: Set { key: String }  — no value field
-```
-
-**Manual:**
-
-```bash
-enveil set mykey somevalue
-# output: error: unexpected argument 'somevalue'
-
-enveil help set
-# usage: enveil set <KEY>  — no value argument shown
-```
-
----
-
-### 7. No `get` or `export` commands exist
-
-**Verify in source:**
-
-```bash
-grep -n "Get\|Export\|get\|export" src/cli.rs
-# returns nothing — neither command is defined
-```
-
-**Manual:**
-
-```bash
-enveil get mykey
-# error: unrecognized subcommand 'get'
-
-enveil export
-# error: unrecognized subcommand 'export'
-
-enveil help
-# lists only: init, set, list, delete, run, import, rotate
-```
