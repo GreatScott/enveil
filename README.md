@@ -33,13 +33,11 @@ The store file is a binary blob. Without the master password, it is indistinguis
 
 ## Installation
 
-### Via cargo (once published to crates.io)
+### Via cargo
 
 ```bash
 cargo install enveil
 ```
-
-This will be the recommended install method once the crate is published. `cargo install` builds the binary and places it in `~/.cargo/bin/`, which is already on your `PATH` if you installed Rust via `rustup`.
 
 ### From source
 
