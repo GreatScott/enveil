@@ -43,7 +43,7 @@ The store file is a binary blob. Without the master password, it is indistinguis
 ### Via cargo
 
 ```bash
-cargo install enject
+cargo install enject --version 0.2.0-alpha 
 ```
 
 ### From source
