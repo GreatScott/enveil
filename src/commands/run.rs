@@ -17,14 +17,14 @@ pub fn run(cmd: Vec<String>) -> Result<()> {
     if !env_path.exists() {
         anyhow::bail!(
             ".env file not found in current directory. \
-             Create one with ev:// references and try again."
+             Create one with en:// references and try again."
         );
     }
     let lines = env_template::parse_file(&env_path).context("Failed to parse .env")?;
 
     // Unlock the local store
-    let password = rpassword::prompt_password("Enveil store password: ")
-        .context("Failed to read Enveil store password")?;
+    let password = rpassword::prompt_password("Enject store password: ")
+        .context("Failed to read Enject store password")?;
     let password = SecretString::new(password);
 
     let store_path = config::store_path(&root);
@@ -39,7 +39,7 @@ pub fn run(cmd: Vec<String>) -> Result<()> {
     // TODO: global store support — for now, global refs will produce a clear error
     let global_secrets: HashMap<String, String> = HashMap::new();
 
-    // Resolve all ev:// references — hard-errors on any unresolved ref
+    // Resolve all en:// references — hard-errors on any unresolved ref
     let resolved = env_template::resolve(&lines, &local_secrets, &global_secrets)
         .context("Failed to resolve .env references")?;
 

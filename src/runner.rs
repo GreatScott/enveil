@@ -55,12 +55,12 @@ mod tests {
         let mut extra = HashMap::new();
         extra.insert(
             "ENVEIL_TEST_VAR".to_string(),
-            "hello-from-enveil".to_string(),
+            "hello-from-enject".to_string(),
         );
 
         let (code, stdout) = run_capture(&["sh", "-c", "echo $ENVEIL_TEST_VAR"], &extra);
         assert_eq!(code, 0);
-        assert!(stdout.trim() == "hello-from-enveil");
+        assert!(stdout.trim() == "hello-from-enject");
     }
 
     #[test]

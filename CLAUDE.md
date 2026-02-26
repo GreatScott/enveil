@@ -1,4 +1,4 @@
-# CLAUDE.md — enveil
+# CLAUDE.md — enject
 
 This file is for Claude Code. Read it fully before writing any code.
 
@@ -6,7 +6,7 @@ This file is for Claude Code. Read it fully before writing any code.
 
 ## What This Project Is
 
-`enveil` is a security-focused CLI tool that prevents AI agents from reading secrets out of `.env` files. It stores secrets in an encrypted local store and injects them into subprocess environments at runtime. The `.env` file on disk contains only `ev://` references — never real values.
+`enject` is a security-focused CLI tool that prevents AI agents from reading secrets out of `.env` files. It stores secrets in an encrypted local store and injects them into subprocess environments at runtime. The `.env` file on disk contains only `en://` references — never real values.
 
 Read `ARCHITECTURE.md` for the full design. This file covers how to build, test, and contribute code safely.
 
@@ -42,7 +42,7 @@ cargo clippy -- -D warnings  # lint; treat all warnings as errors
 
 These rules must NEVER be violated. If you are unsure whether a change violates one of these, stop and flag it.
 
-1. **Secrets never touch disk as plaintext.** The resolved values of `ev://` references must never be written to any file, temp file, or log. The only place secrets exist as plaintext is in process memory after decryption.
+1. **Secrets never touch disk as plaintext.** The resolved values of `en://` references must never be written to any file, temp file, or log. The only place secrets exist as plaintext is in process memory after decryption.
 
 2. **`zeroize` must be called on all key material.** Master password bytes, derived keys, and decrypted store bytes must all be zeroized immediately after use. Use the `zeroize` and `secrecy` crates for this. Never store key material in a plain `String` or `Vec<u8>` — use `secrecy::SecretString` and `secrecy::SecretVec`.
 
@@ -52,7 +52,7 @@ These rules must NEVER be violated. If you are unsure whether a change violates 
 
 5. **Do not implement `get` or `export` commands.** These were deliberately omitted. Do not add them. If asked to add them, decline and explain why they were removed.
 
-6. **Hard-error on unresolved `ev://` references.** If any reference in `.env` cannot be resolved, `enveil run` must exit with a non-zero code and a clear error message. Never launch the subprocess with partial environment injection.
+6. **Hard-error on unresolved `en://` references.** If any reference in `.env` cannot be resolved, `enject run` must exit with a non-zero code and a clear error message. Never launch the subprocess with partial environment injection.
 
 7. **Never add a crate that reads `.env` files into the environment automatically.** Crates like `dotenv` and `dotenvy` load `.env` into the current process env on import. Do not add them as dependencies anywhere in this project.
 
@@ -65,7 +65,7 @@ These rules must NEVER be violated. If you are unsure whether a change violates 
 - Use `thiserror` for library-style errors in modules (define in `error.rs`)
 - Use `anyhow` for command-level error propagation in `commands/`
 - Never use `.unwrap()` or `.expect()` in non-test code — always propagate errors
-- Error messages should be user-facing and actionable, e.g. "Secret 'database_url' not found in store. Add it with: enveil set database_url"
+- Error messages should be user-facing and actionable, e.g. "Secret 'database_url' not found in store. Add it with: enject set database_url"
 
 ### The Store Trait
 
@@ -106,12 +106,12 @@ Build in this order. Each step should be fully tested before moving to the next.
 - Full unit tests for encrypt/decrypt round-trip, wrong password, corrupt data
 
 **Step 2: Config**
-- `config.rs` — read/write `.enveil/config.toml`
+- `config.rs` — read/write `.enject/config.toml`
 - Test that KDF params round-trip correctly
 
 **Step 3: .env template parser**
-- `env_template.rs` — parse `.env`, extract `ev://` refs, resolve against a `HashMap`
-- Test all line formats: comments, plain values, ev:// refs, global refs, malformed lines
+- `env_template.rs` — parse `.env`, extract `en://` refs, resolve against a `HashMap`
+- Test all line formats: comments, plain values, en:// refs, global refs, malformed lines
 
 **Step 4: Commands (init, set, list, delete)**
 - Wire up the four basic store management commands
@@ -129,14 +129,14 @@ Build in this order. Each step should be fully tested before moving to the next.
 
 ## runner.rs Subprocess Environment Behavior
 
-`std::process::Command` inherits the full parent environment by default. That is the correct behavior for `enveil` — do not fight it.
+`std::process::Command` inherits the full parent environment by default. That is the correct behavior for `enject` — do not fight it.
 
 The subprocess environment is: **parent env + .env resolved values**. Specifically:
 
 - All variables from the parent shell environment are inherited (including `PATH`, `HOME`, `USER`, `SHELL`, and any tool-injected or custom vars)
 - `.env` values are layered on top — they override parent env values if keys collide
-- `enveil` never strips inherited variables
-- `enveil` never injects anything beyond what is declared in `.env`
+- `enject` never strips inherited variables
+- `enject` never injects anything beyond what is declared in `.env`
 
 The distinction between "parent environment" and "OS baseline" matters here: `std::process::Command` inherits the full parent shell environment, not just login-time vars. This is intentional and what users expect — stripping `PATH` would break almost every command.
 
@@ -155,11 +155,11 @@ The distinction between "parent environment" and "OS baseline" matters here: `st
 - `store::password`: encrypt → decrypt round-trip returns original value
 - `store::password`: wrong password returns `Err`, not garbage data
 - `store::password`: tampered ciphertext returns `Err` (AES-GCM authentication)
-- `env_template`: `ev://` reference resolves correctly
-- `env_template`: unknown `ev://` reference returns `Err`
+- `env_template`: `en://` reference resolves correctly
+- `env_template`: unknown `en://` reference returns `Err`
 - `env_template`: plain values pass through unchanged
 - `runner`: subprocess receives correct env vars from both parent env and .env
-- `runner`: subprocess does NOT receive env vars that were in neither the parent environment nor .env (i.e. enveil itself injects nothing extra)
+- `runner`: subprocess does NOT receive env vars that were in neither the parent environment nor .env (i.e. enject itself injects nothing extra)
 
 ---
 

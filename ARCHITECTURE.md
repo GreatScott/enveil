@@ -1,18 +1,18 @@
-# enveil — Architecture
+# enject — Architecture
 
-## What is enveil?
+## What is enject?
 
-`enveil` is a CLI tool that prevents AI agents and other processes from reading secrets out of `.env` files by ensuring plaintext secrets **never exist on disk**. Instead, `.env` files contain only `ev://` references. Secrets are decrypted from an encrypted local store and injected directly into a subprocess's environment at launch — they exist only in process memory, never in any file.
+`enject` is a CLI tool that prevents AI agents and other processes from reading secrets out of `.env` files by ensuring plaintext secrets **never exist on disk**. Instead, `.env` files contain only `en://` references. Secrets are decrypted from an encrypted local store and injected directly into a subprocess's environment at launch — they exist only in process memory, never in any file.
 
 ```
 # .env (safe to commit, safe for AI agents to read)
-DATABASE_URL=ev://database_url
-STRIPE_KEY=ev://stripe_key
+DATABASE_URL=en://database_url
+STRIPE_KEY=en://stripe_key
 PORT=3000
 ```
 
 ```bash
-enveil run -- npm start
+enject run -- npm start
 # prompts for master password → decrypts store → spawns subprocess with resolved env
 # npm start sees real values; .env on disk never changes
 ```
@@ -23,25 +23,25 @@ enveil run -- npm start
 
 Tools like Claude Code can read `.env` files from the project directory, accidentally leaking API keys, database passwords, and other secrets into AI context. Even when AI tools claim not to read `.env`, there is no enforcement mechanism. The only reliable solution is to ensure `.env` files contain nothing worth leaking.
 
-`enveil` is the free, open-source, zero-dependency alternative to using `1password CLI` or similar commercial tools for this purpose.
+`enject` is the free, open-source, zero-dependency alternative to using `1password CLI` or similar commercial tools for this purpose.
 
 ---
 
 ## Mental Model
 
 ```
-.env  (committed to git, safe to read)     .enveil/store  (encrypted blob, gitignored)
+.env  (committed to git, safe to read)     .enject/store  (encrypted blob, gitignored)
 ──────────────────────────────────         ───────────────────────────────────────────
-DATABASE_URL=ev://database_url             AES-256-GCM encrypted JSON:
-STRIPE_KEY=ev://stripe_key                 { "database_url": "postgres://...",
+DATABASE_URL=en://database_url             AES-256-GCM encrypted JSON:
+STRIPE_KEY=en://stripe_key                 { "database_url": "postgres://...",
 PORT=3000                                    "stripe_key": "sk_live_..." }
 
-                     ↓  enveil run -- npm start
+                     ↓  enject run -- npm start
 
           1. prompt for master password
           2. derive key via Argon2id
           3. decrypt store in memory
-          4. resolve ev:// references
+          4. resolve en:// references
           5. zeroize key material
           6. exec subprocess with resolved env
 
@@ -51,7 +51,7 @@ PORT=3000                                    "stripe_key": "sk_live_..." }
           PORT=3000
 ```
 
-Plain `KEY=VALUE` pairs in `.env` pass through unchanged. Only `ev://` references are resolved.
+Plain `KEY=VALUE` pairs in `.env` pass through unchanged. Only `en://` references are resolved.
 
 ---
 
@@ -59,27 +59,27 @@ Plain `KEY=VALUE` pairs in `.env` pass through unchanged. Only `ev://` reference
 
 ```
 my-project/
-├── .env                    # template file — ev:// refs + plain values. Commit this.
-├── .enveil/
+├── .env                    # template file — en:// refs + plain values. Commit this.
+├── .enject/
 │   ├── config.toml         # backend type, KDF params, format version
 │   └── store               # encrypted secrets blob. NEVER commit this.
-└── .gitignore              # must include .enveil/
+└── .gitignore              # must include .enject/
 ```
 
-A global store lives at `~/.enveil/` for secrets shared across multiple projects. These are referenced with `ev://global/key_name`.
+A global store lives at `~/.enject/` for secrets shared across multiple projects. These are referenced with `en://global/key_name`.
 
 ---
 
 ## CLI Surface
 
 ```bash
-enveil init                  # initialize store in current directory, choose backend
-enveil set <key>             # add/update a secret (value prompted interactively, never as CLI arg)
-enveil list                  # list key names only, never values
-enveil delete <key>          # remove a secret from the store
-enveil run -- <cmd> [args]   # resolve .env → inject → exec subprocess
-enveil import <file>         # ingest a plaintext .env, encrypt all values, rewrite file as template
-enveil rotate                # re-encrypt store with a new master password
+enject init                  # initialize store in current directory, choose backend
+enject set <key>             # add/update a secret (value prompted interactively, never as CLI arg)
+enject list                  # list key names only, never values
+enject delete <key>          # remove a secret from the store
+enject run -- <cmd> [args]   # resolve .env → inject → exec subprocess
+enject import <file>         # ingest a plaintext .env, encrypt all values, rewrite file as template
+enject rotate                # re-encrypt store with a new master password
 ```
 
 ### Deliberately Omitted Commands
@@ -87,7 +87,7 @@ enveil rotate                # re-encrypt store with a new master password
 - **No `get`** — printing a secret value to stdout creates an AI-readable leakage vector
 - **No `export`** — same reason; printing all resolved values defeats the purpose
 
-If a user loses their master password, secrets must be re-added manually via `enveil set`. This is intentional: there is no recovery path that doesn't involve decrypting the store.
+If a user loses their master password, secrets must be re-added manually via `enject set`. This is intentional: there is no recovery path that doesn't involve decrypting the store.
 
 ---
 
@@ -156,20 +156,20 @@ Nonce is rotated on every write to prevent nonce reuse — a critical AES-GCM se
 |---|---|
 | `# comment` | Ignored |
 | `KEY=value` | Passed through as-is to subprocess env |
-| `KEY=ev://secret_name` | Resolved from local `.enveil/store` |
-| `KEY=ev://global/secret_name` | Resolved from `~/.enveil/store` |
-| `KEY=ev://unknown_key` | **Hard error** — enveil refuses to run |
-| Malformed line | **Hard error** — enveil refuses to run |
+| `KEY=en://secret_name` | Resolved from local `.enject/store` |
+| `KEY=en://global/secret_name` | Resolved from `~/.enject/store` |
+| `KEY=en://unknown_key` | **Hard error** — enject refuses to run |
+| Malformed line | **Hard error** — enject refuses to run |
 
 ### Error Philosophy
 
-enveil fails loudly rather than silently. If any `ev://` reference cannot be resolved, the subprocess is never launched. Partial injection with some secrets missing is worse than no injection at all.
+enject fails loudly rather than silently. If any `en://` reference cannot be resolved, the subprocess is never launched. Partial injection with some secrets missing is worse than no injection at all.
 
 ---
 
 ## subprocess Execution
 
-`enveil run` uses `std::process::Command` with an **explicitly constructed environment**:
+`enject run` uses `std::process::Command` with an **explicitly constructed environment**:
 
 - Starts from the OS baseline environment (so `PATH`, `HOME`, etc. are present)
 - Adds all resolved `.env` values on top
@@ -183,13 +183,13 @@ The `--` separator is required. Everything after `--` is passed verbatim to the 
 
 ## Security Properties
 
-### What enveil protects against
+### What enject protects against
 
-- AI agents, editors, log scrapers, or any process reading `.env` from disk — they see only `ev://` references
+- AI agents, editors, log scrapers, or any process reading `.env` from disk — they see only `en://` references
 - Accidental commits of plaintext secrets to git
 - Shell history exposure (values are never passed as CLI arguments)
 
-### What enveil does NOT protect against
+### What enject does NOT protect against
 
 - A compromised OS or process that can read `/proc/<pid>/environ` — once secrets are in a subprocess's environment, they're in memory. This is the same trust boundary as `op run` from 1Password CLI and is considered acceptable.
 - An attacker with access to the encrypted store AND the master password
@@ -229,20 +229,20 @@ No async runtime. All I/O is synchronous, keeping the binary small and the trust
 src/
 ├── main.rs                  # entry point, clap dispatch
 ├── cli.rs                   # clap struct definitions and argument types
-├── config.rs                # .enveil/config.toml read/write, KDF params
+├── config.rs                # .enject/config.toml read/write, KDF params
 ├── store/
 │   ├── mod.rs               # Store trait: open(), get(), set(), delete(), list()
 │   └── password.rs          # AES-256-GCM + Argon2id implementation
-├── env_template.rs          # .env file parsing, ev:// reference extraction
+├── env_template.rs          # .env file parsing, en:// reference extraction
 ├── runner.rs                # subprocess construction and exec
 ├── commands/
-│   ├── init.rs              # enveil init
-│   ├── set.rs               # enveil set <key>
-│   ├── list.rs              # enveil list
-│   ├── delete.rs            # enveil delete <key>
-│   ├── run.rs               # enveil run -- <cmd>
-│   ├── import.rs            # enveil import <file>
-│   └── rotate.rs            # enveil rotate
+│   ├── init.rs              # enject init
+│   ├── set.rs               # enject set <key>
+│   ├── list.rs              # enject list
+│   ├── delete.rs            # enject delete <key>
+│   ├── run.rs               # enject run -- <cmd>
+│   ├── import.rs            # enject import <file>
+│   └── rotate.rs            # enject rotate
 └── error.rs                 # thiserror error type definitions
 ```
 

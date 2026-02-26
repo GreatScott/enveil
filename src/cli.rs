@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "enveil",
+    name = "enject",
     about = "Keep secrets out of .env files — and out of AI context.",
     version
 )]
@@ -14,7 +14,7 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Initialize a new enveil store in the current directory.
+    /// Initialize a new enject store in the current directory.
     Init,
 
     /// Add or update a secret (value is prompted interactively).
@@ -39,12 +39,12 @@ pub enum Command {
         cmd: Vec<String>,
     },
 
-    /// Import a plaintext .env file: encrypt all values, rewrite as ev:// template.
+    /// Import a plaintext .env file: encrypt all values, rewrite as en:// template.
     Import {
         /// Path to the plaintext .env file to import.
         file: PathBuf,
     },
 
-    /// Re-encrypt the store with a new Enveil store password.
+    /// Re-encrypt the store with a new Enject store password.
     Rotate,
 }

@@ -11,7 +11,7 @@ use rand::RngCore;
 use secrecy::{ExposeSecret, SecretString};
 use zeroize::Zeroize;
 
-use crate::error::EnveilError;
+use crate::error::EnjectError;
 use crate::store::{Result, Store};
 
 const NONCE_LEN: usize = 12;
@@ -64,7 +64,7 @@ impl PasswordStore {
 
         let ciphertext_with_nonce = std::fs::read(&self.store_path)?;
         if ciphertext_with_nonce.len() < NONCE_LEN {
-            return Err(EnveilError::CorruptStore(
+            return Err(EnjectError::CorruptStore(
                 "Store file too short to contain a nonce.".into(),
             ));
         }
@@ -79,11 +79,11 @@ impl PasswordStore {
 
         let plaintext_result = {
             let cipher = Aes256Gcm::new_from_slice(&key)
-                .map_err(|_| EnveilError::CorruptStore("Invalid key length.".into()))?;
+                .map_err(|_| EnjectError::CorruptStore("Invalid key length.".into()))?;
             let nonce = Nonce::from_slice(nonce_bytes);
             cipher
                 .decrypt(nonce, ciphertext)
-                .map_err(|_| EnveilError::DecryptionFailed)
+                .map_err(|_| EnjectError::DecryptionFailed)
         };
 
         key.zeroize();
@@ -91,7 +91,7 @@ impl PasswordStore {
         let plaintext = plaintext_result?;
 
         let secrets: HashMap<String, String> = serde_json::from_slice(&plaintext)
-            .map_err(|e| EnveilError::CorruptStore(e.to_string()))?;
+            .map_err(|e| EnjectError::CorruptStore(e.to_string()))?;
 
         self.secrets = Some(secrets);
         Ok(())
@@ -102,7 +102,7 @@ impl PasswordStore {
         let secrets = self.secrets_ref()?;
 
         let mut json_bytes =
-            serde_json::to_vec(secrets).map_err(|e| EnveilError::Serialization(e.to_string()))?;
+            serde_json::to_vec(secrets).map_err(|e| EnjectError::Serialization(e.to_string()))?;
 
         let mut key = derive_key(
             password.expose_secret().as_bytes(),
@@ -116,10 +116,10 @@ impl PasswordStore {
 
         let ciphertext_result = {
             let cipher = Aes256Gcm::new_from_slice(&key)
-                .map_err(|_| EnveilError::CorruptStore("Invalid key length.".into()))?;
+                .map_err(|_| EnjectError::CorruptStore("Invalid key length.".into()))?;
             cipher
                 .encrypt(nonce, json_bytes.as_ref())
-                .map_err(|_| EnveilError::CorruptStore("Encryption failed.".into()))
+                .map_err(|_| EnjectError::CorruptStore("Encryption failed.".into()))
         };
 
         key.zeroize();
@@ -131,7 +131,7 @@ impl PasswordStore {
         let parent = self
             .store_path
             .parent()
-            .ok_or_else(|| EnveilError::Config("Store has no parent directory.".into()))?;
+            .ok_or_else(|| EnjectError::Config("Store has no parent directory.".into()))?;
 
         let tmp_path = parent.join(format!(".store.tmp.{}", rand::random::<u64>()));
 
@@ -162,13 +162,13 @@ impl PasswordStore {
     fn secrets_mut(&mut self) -> Result<&mut HashMap<String, String>> {
         self.secrets
             .as_mut()
-            .ok_or_else(|| EnveilError::CorruptStore("Store not unlocked.".into()))
+            .ok_or_else(|| EnjectError::CorruptStore("Store not unlocked.".into()))
     }
 
     fn secrets_ref(&self) -> Result<&HashMap<String, String>> {
         self.secrets
             .as_ref()
-            .ok_or_else(|| EnveilError::CorruptStore("Store not unlocked.".into()))
+            .ok_or_else(|| EnjectError::CorruptStore("Store not unlocked.".into()))
     }
 }
 
@@ -201,14 +201,14 @@ impl Store for PasswordStore {
 /// The caller is responsible for zeroizing the returned array after use.
 fn derive_key(password: &[u8], salt: &[u8], params: &KdfParams) -> Result<[u8; KEY_LEN]> {
     let argon2_params = Params::new(params.m_cost, params.t_cost, params.p_cost, Some(KEY_LEN))
-        .map_err(|e| EnveilError::Config(e.to_string()))?;
+        .map_err(|e| EnjectError::Config(e.to_string()))?;
 
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, argon2_params);
 
     let mut key = [0u8; KEY_LEN];
     argon2
         .hash_password_into(password, salt, &mut key)
-        .map_err(|e| EnveilError::Config(e.to_string()))?;
+        .map_err(|e| EnjectError::Config(e.to_string()))?;
 
     Ok(key)
 }
