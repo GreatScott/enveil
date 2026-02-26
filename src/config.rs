@@ -113,7 +113,9 @@ fn maybe_migrate_dir(project_root: &Path) {
     }
 
     if !std::io::stdin().is_terminal() {
-        println!("Warning: found legacy .enveil/ store. Rename it to .enject/ to silence this warning.");
+        println!(
+            "Warning: found legacy .enveil/ store. Rename it to .enject/ to silence this warning."
+        );
         return;
     }
 
