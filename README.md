@@ -8,6 +8,11 @@ AI coding tools like Claude Code, Copilot, Cursor, and others can read files in 
 
 This project is inspired by Filip Hric’s solution/[blog post](https://filiphric.com/dont-let-ai-read-your-env-files), which uses a similar concept leveraging 1Password. I wanted a self-contained solution that didn’t rely on a third party services giving rise to this solution. And yes, this project was built almost entirely with Claude Code with a bunch of manual verification and testing.
 
+## Benefits and Caveats
+
+This project is primarily designed to mitigate the known issue of AI/LLM tools accidentally reading `.env` secrets in your project. Additional benefits include preventing secret leakage if a `.env` is accidentally committed to a repository, the ability to share `.env` files containing references instead of plaintext secrets, and the option to share the encrypted store itself.                               
+This project is not a silver bullet for preventing an AI agent from obtaining your secrets. For example, an agent can still write code (by accident or via prompt injection) that exfiltrates secrets to terminal output or a file at runtime. We strongly advise against relying on this tool, or `.env` files in general, to store production secrets
+
 ## How it works
 
 Your `.env` file looks like this:
