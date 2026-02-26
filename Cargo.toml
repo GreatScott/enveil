@@ -1,6 +1,6 @@
 [package]
 name = "enject"
-version = "0.1.0"
+version = "0.2.0-alpha"
 edition = "2021"
 description = "Hide .env secrets from AI agents. Stores secrets in an encrypted local store and injects them into subprocesses at runtime — your .env file contains only symbolic references, never real values."
 license = "MIT"
