@@ -9,8 +9,8 @@ pub fn run() -> Result<()> {
     let root = config::project_root()?;
     let cfg = config::read(&root)?;
 
-    let password = rpassword::prompt_password("Enveil store password: ")
-        .context("Failed to read Enveil store password")?;
+    let password = rpassword::prompt_password("Enject store password: ")
+        .context("Failed to read Enject store password")?;
     let password = SecretString::new(password);
 
     let store_path = config::store_path(&root);
@@ -21,7 +21,7 @@ pub fn run() -> Result<()> {
 
     let keys = store.list()?;
     if keys.is_empty() {
-        println!("No secrets stored. Add one with: enveil set <key>");
+        println!("No secrets stored. Add one with: enject set <key>");
     } else {
         for key in &keys {
             println!("{}", key);

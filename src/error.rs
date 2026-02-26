@@ -1,17 +1,17 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum EnveilError {
-    #[error("Store not initialized. Run `enveil init` first.")]
+pub enum EnjectError {
+    #[error("Store not initialized. Run `enject init` first.")]
     StoreNotInitialized,
 
-    #[error("Wrong Enveil store password, or store is corrupted.")]
+    #[error("Wrong Enject store password, or store is corrupted.")]
     DecryptionFailed,
 
     #[error("Store is corrupted: {0}")]
     CorruptStore(String),
 
-    #[error("Secret '{0}' not found in store. Add it with: enveil set {0}")]
+    #[error("Secret '{0}' not found in store. Add it with: enject set {0}")]
     SecretNotFound(String),
 
     #[error("Config error: {0}")]

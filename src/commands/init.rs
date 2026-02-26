@@ -11,12 +11,12 @@ pub fn run() -> Result<()> {
 
     if cfg_path.exists() {
         bail!(
-            "enveil is already initialized in this directory. \
-             To reinitialize, delete .enveil/ first."
+            "enject is already initialized in this directory. \
+             To reinitialize, delete .enject/ first."
         );
     }
 
-    println!("Initializing enveil store...");
+    println!("Initializing enject store...");
 
     // Generate a fresh 32-byte salt
     let mut salt = vec![0u8; 32];
@@ -25,10 +25,10 @@ pub fn run() -> Result<()> {
 
     let cfg = config::Config::default_new(salt_hex);
 
-    // Prompt for Enveil store password (twice, with confirmation)
+    // Prompt for Enject store password (twice, with confirmation)
     let password = prompt_new_password()?;
 
-    // Write config first — this creates the .enveil/ directory
+    // Write config first — this creates the .enject/ directory
     config::write(&root, &cfg).context("Failed to write config")?;
 
     let store_path = config::store_path(&root);
@@ -37,27 +37,27 @@ pub fn run() -> Result<()> {
 
     println!("Initialized.");
     println!();
-    println!("  1. Add a secret:       enveil set some_api_key");
-    println!("  2. Reference in .env:  API_KEY=ev://some_api_key");
-    println!("  3. Run your app:       enveil run -- npm start");
+    println!("  1. Add a secret:       enject set some_api_key");
+    println!("  2. Reference in .env:  API_KEY=en://some_api_key");
+    println!("  3. Run your app:       enject run -- npm start");
     println!();
-    println!("The ev:// name must match the key you used in 'enveil set'.");
+    println!("The en:// name must match the key you used in 'enject set'.");
     println!("The left side (DATABASE_URL) is what your app sees.");
 
     Ok(())
 }
 
 pub fn prompt_new_password() -> Result<SecretString> {
-    let password = rpassword::prompt_password("New Enveil store password: ")
+    let password = rpassword::prompt_password("New Enject store password: ")
         .context("Failed to read password")?;
-    let confirm = rpassword::prompt_password("Confirm Enveil store password: ")
+    let confirm = rpassword::prompt_password("Confirm Enject store password: ")
         .context("Failed to read password confirmation")?;
 
     if password != confirm {
         bail!("Passwords do not match.");
     }
     if password.is_empty() {
-        bail!("Enveil store password must not be empty.");
+        bail!("Enject store password must not be empty.");
     }
 
     Ok(SecretString::new(password))

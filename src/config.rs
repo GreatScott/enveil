@@ -1,11 +1,13 @@
+use std::io::{BufRead, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::EnveilError;
+use crate::error::EnjectError;
 use crate::store::password::KdfParams;
 
-const CONFIG_DIR: &str = ".enveil";
+const CONFIG_DIR: &str = ".enject";
+const LEGACY_CONFIG_DIR: &str = ".enveil";
 const CONFIG_FILE: &str = "config.toml";
 const STORE_FILE: &str = "store";
 
@@ -43,50 +45,126 @@ impl Config {
         }
     }
 
-    pub fn salt_bytes(&self) -> Result<Vec<u8>, EnveilError> {
+    pub fn salt_bytes(&self) -> Result<Vec<u8>, EnjectError> {
         hex::decode(&self.salt)
-            .map_err(|_| EnveilError::Config("Invalid salt hex in config.toml".into()))
+            .map_err(|_| EnjectError::Config("Invalid salt hex in config.toml".into()))
     }
 }
 
-/// Returns the `.enveil` directory for a given project root.
-pub fn enveil_dir(project_root: &Path) -> PathBuf {
-    project_root.join(CONFIG_DIR)
+/// Returns the `.enject` directory for a given project root,
+/// falling back to the legacy `.enveil/` directory if `.enject/` does not exist.
+pub fn enject_dir(project_root: &Path) -> PathBuf {
+    let new_dir = project_root.join(CONFIG_DIR);
+    if new_dir.exists() {
+        return new_dir;
+    }
+    let legacy_dir = project_root.join(LEGACY_CONFIG_DIR);
+    if legacy_dir.exists() {
+        return legacy_dir;
+    }
+    new_dir
 }
 
 /// Returns the config file path for a given project root.
 pub fn config_path(project_root: &Path) -> PathBuf {
-    enveil_dir(project_root).join(CONFIG_FILE)
+    enject_dir(project_root).join(CONFIG_FILE)
 }
 
 /// Returns the store file path for a given project root.
 pub fn store_path(project_root: &Path) -> PathBuf {
-    enveil_dir(project_root).join(STORE_FILE)
+    enject_dir(project_root).join(STORE_FILE)
 }
 
 /// Read and parse config from the given project root. Returns an error if not initialized.
-pub fn read(project_root: &Path) -> Result<Config, EnveilError> {
+pub fn read(project_root: &Path) -> Result<Config, EnjectError> {
+    maybe_migrate_dir(project_root);
     let path = config_path(project_root);
     if !path.exists() {
-        return Err(EnveilError::StoreNotInitialized);
+        return Err(EnjectError::StoreNotInitialized);
     }
     let raw = std::fs::read_to_string(&path)?;
-    toml::from_str(&raw).map_err(|e| EnveilError::Config(e.to_string()))
+    toml::from_str(&raw).map_err(|e| EnjectError::Config(e.to_string()))
 }
 
-/// Write config to the given project root. Creates the `.enveil` directory if needed.
-pub fn write(project_root: &Path, config: &Config) -> Result<(), EnveilError> {
-    let dir = enveil_dir(project_root);
+/// Write config to the given project root. Creates the `.enject` directory if needed.
+pub fn write(project_root: &Path, config: &Config) -> Result<(), EnjectError> {
+    let dir = enject_dir(project_root);
     std::fs::create_dir_all(&dir)?;
     let path = dir.join(CONFIG_FILE);
-    let raw = toml::to_string(config).map_err(|e| EnveilError::Config(e.to_string()))?;
+    let raw = toml::to_string(config).map_err(|e| EnjectError::Config(e.to_string()))?;
     std::fs::write(path, raw)?;
     Ok(())
 }
 
 /// Returns the current project root (cwd).
-pub fn project_root() -> Result<PathBuf, EnveilError> {
-    std::env::current_dir().map_err(EnveilError::Io)
+pub fn project_root() -> Result<PathBuf, EnjectError> {
+    std::env::current_dir().map_err(EnjectError::Io)
+}
+
+/// If `.enveil/` exists but `.enject/` does not, offer to migrate.
+/// Copies `.enveil/` to `.enveil.bak/` as a backup, then renames to `.enject/`.
+/// Errors are non-fatal — a failure falls through to using the legacy path.
+fn maybe_migrate_dir(project_root: &Path) {
+    let new_dir = project_root.join(CONFIG_DIR);
+    let old_dir = project_root.join(LEGACY_CONFIG_DIR);
+
+    if new_dir.exists() || !old_dir.exists() {
+        return;
+    }
+
+    if !std::io::stdin().is_terminal() {
+        println!("Warning: found legacy .enveil/ store. Rename it to .enject/ to silence this warning.");
+        return;
+    }
+
+    println!("Warning: found legacy .enveil/ store.");
+    print!("Rename .enveil/ to .enject/? A backup will be kept at .enveil.bak/ [y/N]: ");
+    if std::io::stdout().flush().is_err() {
+        return;
+    }
+
+    let mut answer = String::new();
+    if std::io::stdin().lock().read_line(&mut answer).is_err() {
+        return;
+    }
+
+    if !answer.trim().eq_ignore_ascii_case("y") {
+        println!("Skipping. Rename .enveil/ to .enject/ to silence this warning.");
+        return;
+    }
+
+    let backup = project_root.join(".enveil.bak");
+    if let Err(e) = copy_dir_all(&old_dir, &backup) {
+        println!(
+            "Warning: could not create backup: {}. Migration skipped.",
+            e
+        );
+        return;
+    }
+    if let Err(e) = std::fs::rename(&old_dir, &new_dir) {
+        println!(
+            "Warning: could not rename .enveil/ to .enject/: {}. Using legacy path.",
+            e
+        );
+        let _ = std::fs::remove_dir_all(&backup);
+        return;
+    }
+
+    println!("Migrated .enveil/ to .enject/ (backup at .enveil.bak/).");
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let dst_path = dst.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_all(&entry.path(), &dst_path)?;
+        } else {
+            std::fs::copy(entry.path(), &dst_path)?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -121,7 +199,7 @@ mod tests {
     fn test_read_missing_config_returns_not_initialized() {
         let dir = TempDir::new().unwrap();
         let err = read(dir.path()).unwrap_err();
-        assert!(matches!(err, EnveilError::StoreNotInitialized));
+        assert!(matches!(err, EnjectError::StoreNotInitialized));
     }
 
     #[test]
@@ -130,6 +208,37 @@ mod tests {
         let hex = hex::encode(&original);
         let config = Config::default_new(hex);
         assert_eq!(config.salt_bytes().unwrap(), original);
+    }
+
+    #[test]
+    fn test_legacy_enveil_dir_fallback() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+
+        // Create the legacy .enveil/ directory (but not .enject/)
+        let legacy_dir = root.join(".enveil");
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+
+        // enject_dir, config_path, store_path should all resolve to .enveil/
+        assert_eq!(enject_dir(root), root.join(".enveil"));
+        assert_eq!(config_path(root), root.join(".enveil").join("config.toml"));
+        assert_eq!(store_path(root), root.join(".enveil").join("store"));
+    }
+
+    #[test]
+    fn test_new_dir_takes_precedence_over_legacy() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+
+        // Create both directories with valid configs
+        let config = Config::default_new(fake_salt_hex());
+        write(root, &config).unwrap(); // creates .enject/
+
+        let legacy_dir = root.join(".enveil");
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+
+        // .enject/ should win
+        assert_eq!(enject_dir(root), root.join(".enject"));
     }
 
     #[test]

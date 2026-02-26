@@ -238,7 +238,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "enveil"
+name = "enject"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
