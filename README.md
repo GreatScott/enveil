@@ -11,6 +11,7 @@ This project is inspired by Filip Hric’s solution/[blog post](https://filiphri
 ## Benefits and Caveats
 
 This project is primarily designed to mitigate the known issue of AI/LLM tools accidentally reading `.env` secrets in your project. Additional benefits include preventing secret leakage if a `.env` is accidentally committed to a repository, the ability to share `.env` files containing references instead of plaintext secrets, and the option to share the encrypted store itself.                               
+
 This project is not a silver bullet for preventing an AI agent from obtaining your secrets. For example, an agent can still write code (by accident or via prompt injection) that exfiltrates secrets to terminal output or a file at runtime. We strongly advise against relying on this tool, or `.env` files in general, to store production secrets
 
 ## How it works
@@ -41,6 +42,8 @@ The store file is a binary blob. Without the master password, it is indistinguis
 ## Installation
 
 ### Via cargo
+
+This release is still in alpha, so requires appending the latest version to install when calling `cargo install`
 
 ```bash
 cargo install enject --version 0.2.0-alpha 
